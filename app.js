@@ -5,9 +5,68 @@ new Vue({
         keys: [],
         primaryKey: '',
         valueRows: [],
-        jsonOutput: ''
+        jsonOutput: '',
+        lang: 'ko', // 기본 언어
+        translations: {
+            en: {
+                title: "JSON Generator",
+                step1: "1. Enter JSON Keys",
+                keyPlaceholder: "Enter a key and press Enter",
+                add: "Add",
+                step2: "2. Select Unique Key",
+                selectPkPlaceholder: "Select a key to use as the unique key",
+                step3: "3. Enter Values",
+                valueDescription: "Each row will become a JSON object. The value for the unique key '{{primaryKey}}' cannot be duplicated.",
+                actions: "Actions",
+                removeRow: "Remove Row",
+                addRow: "Add Row",
+                step4: "4. Generate JSON",
+                generateJson: "Generate JSON",
+                generatedJson: "Generated JSON:",
+                copy: "Copy",
+                duplicatePkAlert: "The value '{{duplicateValue}}' for the key '{{primaryKey}}' is duplicated. Please correct it.",
+                noValuesAlert: "No values entered.",
+                duplicatePkGenerateAlert: "There are duplicate values for the unique key '{{primaryKey}}'. Cannot generate JSON.",
+                copySuccessAlert: "JSON copied to clipboard.",
+                copyFailAlert: "Failed to copy to clipboard."
+            },
+            ko: {
+                title: "JSON 생성기",
+                step1: "1. JSON 키 입력",
+                keyPlaceholder: "키를 입력하고 Enter를 누르세요",
+                add: "추가",
+                step2: "2. 고유 키 선택",
+                selectPkPlaceholder: "고유 키로 사용할 키를 선택하세요",
+                step3: "3. 값 입력",
+                valueDescription: "각 행은 하나의 JSON 객체가 됩니다. 고유 키 '{{primaryKey}}'의 값은 중복될 수 없습니다.",
+                actions: "동작",
+                removeRow: "행 삭제",
+                addRow: "행 추가",
+                step4: "4. JSON 생성",
+                generateJson: "JSON 생성",
+                generatedJson: "생성된 JSON:",
+                copy: "복사",
+                duplicatePkAlert: "'{{primaryKey}}' 키의 값 '{{duplicateValue}}'가 중복되었습니다. 수정해주세요.",
+                noValuesAlert: "입력된 값이 없습니다.",
+                duplicatePkGenerateAlert: "고유 키 '{{primaryKey}}'에 중복된 값이 있습니다. JSON을 생성할 수 없습니다.",
+                copySuccessAlert: "JSON이 클립보드에 복사되었습니다.",
+                copyFailAlert: "클립보드 복사에 실패했습니다."
+            }
+        }
+    },
+    created() {
+        const userLang = navigator.language || navigator.userLanguage;
+        this.lang = userLang.startsWith('en') ? 'en' : 'ko';
+        document.documentElement.lang = this.lang; // Set html lang attribute
     },
     methods: {
+        t(key, replacements = {}) {
+            let text = (this.translations[this.lang] && this.translations[this.lang][key]) || key;
+            for (const placeholder in replacements) {
+                text = text.replace(new RegExp('{{' + placeholder + '}}', 'g'), replacements[placeholder]);
+            }
+            return text;
+        },
         addKey() {
             const key = this.newKey.trim();
             if (key && !this.keys.includes(key)) {
@@ -20,7 +79,6 @@ new Vue({
             if (this.primaryKey === removedKey) {
                 this.primaryKey = '';
             }
-            // 키가 삭제되면 모든 값 행에서 해당 키-값 쌍을 제거합니다.
             this.valueRows.forEach(row => {
                 this.$delete(row, removedKey);
             });
@@ -34,10 +92,9 @@ new Vue({
         },
         removeRow(index) {
             this.valueRows.splice(index, 1);
-            this.checkForDuplicates(); // 행 삭제 후 중복 재검사
+            this.checkForDuplicates();
         },
         checkForDuplicates(rowIndex, key) {
-            // 현재 변경된 키가 고유 키가 아니면 검사하지 않습니다.
             if (key && key !== this.primaryKey) {
                 return;
             }
@@ -47,8 +104,7 @@ new Vue({
 
             if (primaryKeyValues.length !== uniqueValues.size) {
                 const duplicateValue = this.findDuplicate(primaryKeyValues);
-                // 사용자에게 중복 사실을 알리고 수정을 요청합니다.
-                alert(`'${this.primaryKey}' 키의 값 '${duplicateValue}'가 중복되었습니다. 수정해주세요.`);
+                alert(this.t('duplicatePkAlert', { primaryKey: this.primaryKey, duplicateValue: duplicateValue }));
             }
         },
         findDuplicate(arr) {
@@ -61,20 +117,19 @@ new Vue({
             }
         },
         generateJson() {
-            // 빈 값을 가진 행은 필터링할 수 있습니다 (선택 사항).
             const nonEmptyRows = this.valueRows.filter(row => 
                 Object.values(row).some(val => val !== '')
             );
 
             if (nonEmptyRows.length === 0) {
-                alert("입력된 값이 없습니다.");
+                alert(this.t('noValuesAlert'));
                 return;
             }
             
-            this.checkForDuplicates(); // 생성 전 최종 중복 검사
+            this.checkForDuplicates();
             const primaryKeyValues = nonEmptyRows.map(row => row[this.primaryKey]).filter(val => val);
             if (primaryKeyValues.length !== new Set(primaryKeyValues).size) {
-                 alert(`고유 키 '${this.primaryKey}'에 중복된 값이 있습니다. JSON을 생성할 수 없습니다.`);
+                 alert(this.t('duplicatePkGenerateAlert', { primaryKey: this.primaryKey }));
                  return;
             }
 
@@ -83,21 +138,19 @@ new Vue({
         copyJson() {
             if (!this.jsonOutput) return;
             navigator.clipboard.writeText(this.jsonOutput).then(() => {
-                alert('JSON이 클립보드에 복사되었습니다.');
+                alert(this.t('copySuccessAlert'));
             }).catch(err => {
-                console.error('복사 실패:', err);
-                alert('클립보드 복사에 실패했습니다.');
+                console.error('Copy failed:', err);
+                alert(this.t('copyFailAlert'));
             });
         }
     },
     watch: {
-        // 고유 키가 변경되면, 기존 값들의 중복을 다시 검사합니다.
         primaryKey(newPrimaryKey, oldPrimaryKey) {
             if (newPrimaryKey) {
                 this.checkForDuplicates();
             }
         },
-        // 키 목록이 변경되면, 값 행들의 구조를 동기화합니다.
         keys(newKeys, oldKeys) {
             const addedKeys = newKeys.filter(k => !oldKeys.includes(k));
             const removedKeys = oldKeys.filter(k => !newKeys.includes(k));
