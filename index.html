@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 생성기</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <h1>JSON 생성기</h1>
+
+        <!-- Step 1 & 2: Key Input and Primary Key Selection (unchanged) -->
+        <div class="step">
+            <h2>1. JSON 키 입력</h2>
+            <div class="input-group">
+                <input type="text" v-model="newKey" @keyup.enter="addKey" placeholder="키를 입력하고 Enter를 누르세요">
+                <button @click="addKey">추가</button>
+            </div>
+            <ul class="key-list">
+                <li v-for="(key, index) in keys" :key="index">
+                    {{ key }}
+                    <button @click="removeKey(index)" class="remove-btn">x</button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="step" v-if="keys.length > 0">
+            <h2>2. 고유 키 선택</h2>
+            <select v-model="primaryKey">
+                <option disabled value="">고유 키로 사용할 키를 선택하세요</option>
+                <option v-for="key in keys" :key="key" :value="key">{{ key }}</option>
+            </select>
+        </div>
+
+        <!-- Step 3: Value Input -->
+        <div class="step" v-if="primaryKey">
+            <h2>3. 값 입력</h2>
+            <p>각 행은 하나의 JSON 객체가 됩니다. 고유 키 '{{ primaryKey }}'의 값은 중복될 수 없습니다.</p>
+            <table class="value-table">
+                <thead>
+                    <tr>
+                        <th v-for="key in keys" :key="key">{{ key }}</th>
+                        <th>동작</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(row, rowIndex) in valueRows" :key="rowIndex">
+                        <td v-for="key in keys" :key="key">
+                            <input type="text" v-model="row[key]" @change="checkForDuplicates(rowIndex, key)">
+                        </td>
+                        <td>
+                            <button @click="removeRow(rowIndex)" class="remove-btn">행 삭제</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <button @click="addRow">행 추가</button>
+        </div>
+
+        <!-- Step 4: Generate JSON -->
+        <div class="step" v-if="valueRows.length > 0">
+            <h2>4. JSON 생성</h2>
+            <button @click="generateJson">JSON 생성</button>
+            <div v-if="jsonOutput">
+                <h3>생성된 JSON:</h3>
+                <pre class="json-output">{{ jsonOutput }}</pre>
+                <button @click="copyJson">복사</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+
